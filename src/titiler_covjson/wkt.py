@@ -109,8 +109,10 @@ _MULTIPOINT_POINT = re.compile(r"\([^(),]*\)|[^(),]+")
 # A coordinate token, checked before `float` reads it: `float` also accepts PEP
 # 515 underscores (`1_000`) and any Unicode decimal digit (`١٢`), silently
 # yielding a coordinate the requester never wrote -- hence `[0-9]`, not `\d`.
-# The non-finite spellings are admitted deliberately, so finiteness keeps its
-# single home in the geometry types.
+# Matching is ASCII-only, because Unicode case folding reads `ı` (dotless i) as
+# `i`, so `ınf` would pass here and then make `float` raise. The non-finite
+# spellings are admitted deliberately, so finiteness keeps its single home in the
+# geometry types.
 #
 # Only a dot admits the digits after one, so a run of digits splits exactly one
 # way. Spelling this `[0-9]+\.?[0-9]*` instead lets the run divide at every
@@ -121,7 +123,7 @@ _COORDINATE_TOKEN = re.compile(
             (?: [eE] [+-]? [0-9]+ )?                    # optional exponent
     | [+-]? (?: nan | inf (?: inity )? )                # non-finite spellings
     """,
-    re.IGNORECASE | re.VERBOSE,
+    re.ASCII | re.IGNORECASE | re.VERBOSE,
 )
 
 
