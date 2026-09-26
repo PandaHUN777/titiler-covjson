@@ -86,6 +86,20 @@ def test_coordinate_token_rejects_non_wkt_syntax(token: str) -> None:
     assert _COORDINATE_TOKEN.fullmatch(token) is None
 
 
+@pytest.mark.parametrize(
+    "token",
+    ["\u0131nf", "\u0130nf", "inf\u0131nity"],
+    ids=["dotless-i", "dotted-capital-i", "dotless-i-in-infinity"],
+)
+def test_coordinate_token_rejects_non_ascii_case_folds(token: str) -> None:
+    """Unicode case folding reads ``ı`` and ``İ`` as ``i``, but ``float`` does not.
+
+    A token the pattern admits and ``float`` rejects surfaces as a 500, so the
+    pattern must not fold letters beyond ASCII.
+    """
+    assert _COORDINATE_TOKEN.fullmatch(token) is None
+
+
 def test_parse_point_wkt_accepts_an_underflowing_coordinate() -> None:
     """A coordinate too small to represent is accepted, silently becoming zero.
 
