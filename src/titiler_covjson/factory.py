@@ -53,6 +53,7 @@ from titiler.core.factory import BaseFactory
 from titiler_covjson.dependencies import (
     CovJSONBandParams,
     area_stat,
+    reject_temporal_selection,
     reject_vertical_selection,
     to_kwargs,
     validate_covjson_format,
@@ -221,7 +222,9 @@ class CovJSONFactory(BaseFactory):
                 "Read the bounding box `minx,miny,maxx,maxy` from the dataset and "
                 "return a 2-D CoverageJSON Grid coverage. By default the box is "
                 "interpreted in, and the output labeled with, CRS84 "
-                "(longitude/latitude); pass `crs` to override."
+                "(longitude/latitude); pass `crs` to override. Temporal "
+                "(`datetime`) and vertical (`z`) selections are rejected because "
+                "this 2-D raster has neither dimension."
             ),
         )
         def bbox_coverage(
@@ -234,6 +237,8 @@ class CovJSONFactory(BaseFactory):
             dataset_params: Annotated[DatasetParams, Depends(self.dataset_dependency)],
             image_params: Annotated[PartFeatureParams, Depends(self.image_dependency)],
             crs: Annotated[rasterio.CRS | None, Depends(CRSParams)],
+            _temporal: Annotated[None, Depends(reject_temporal_selection)],
+            _vertical: Annotated[None, Depends(reject_vertical_selection)],
             _format: Annotated[None, Depends(validate_covjson_format)],
         ) -> CovJSONResponse:
             _validate_bbox(minx, miny, maxx, maxy)
@@ -276,8 +281,8 @@ class CovJSONFactory(BaseFactory):
                 "in, and the output labeled with, CRS84 (longitude/latitude); pass "
                 "`crs` to override. Vertical selection (a `z` level, or a 3-D "
                 "`POINT Z` / `MULTIPOINT Z`) is rejected: the 2-D raster backing "
-                "cannot sample a vertical level. A `datetime` selector is not yet "
-                "honored (this dataset has no temporal dimension)."
+                "cannot sample a vertical level. A `datetime` selector is rejected "
+                "because this dataset has no temporal dimension."
             ),
         )
         def position_coverage(
@@ -293,6 +298,7 @@ class CovJSONFactory(BaseFactory):
             dataset_params: Annotated[DatasetParams, Depends(self.dataset_dependency)],
             crs: Annotated[rasterio.CRS | None, Depends(CRSParams)],
             _vertical: Annotated[None, Depends(reject_vertical_selection)],
+            _temporal: Annotated[None, Depends(reject_temporal_selection)],
             _format: Annotated[None, Depends(validate_covjson_format)],
         ) -> CovJSONResponse:
             parsed = parse_position_coords(coords)
@@ -365,7 +371,9 @@ class CovJSONFactory(BaseFactory):
                 "polygon that selects no valid pixels (outside the dataset, or "
                 "all nodata) yields a `null` value rather than an error. Vertical "
                 "selection (a `z` level, or a 3-D `POLYGON Z`) is rejected: the "
-                "2-D raster backing has no vertical dimension to reduce over."
+                "2-D raster backing has no vertical dimension to reduce over. A "
+                "`datetime` selector is rejected because this dataset has no "
+                "temporal dimension."
             ),
         )
         def area_coverage(
@@ -379,6 +387,7 @@ class CovJSONFactory(BaseFactory):
             crs: Annotated[rasterio.CRS | None, Depends(CRSParams)],
             stat: Annotated[Stat, Depends(area_stat)],
             _vertical: Annotated[None, Depends(reject_vertical_selection)],
+            _temporal: Annotated[None, Depends(reject_temporal_selection)],
             _format: Annotated[None, Depends(validate_covjson_format)],
         ) -> CovJSONResponse:
             polygon = parse_polygon_wkt(coords)

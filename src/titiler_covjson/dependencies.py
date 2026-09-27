@@ -270,6 +270,51 @@ def reject_vertical_selection(
         raise BadRequestError(msg)
 
 
+def reject_temporal_selection(
+    datetime: Annotated[
+        str | None,
+        Query(
+            description=(
+                "Temporal selector. Not supported by this 2-D raster endpoint."
+            )
+        ),
+    ] = None,
+) -> None:
+    """Reject a temporal selection on a 2-D raster with no time axis.
+
+    A single raster has no temporal dimension to query, so returning its values
+    for an arbitrary requested time would imply that the selector was honored.
+    This dependency rejects a requested time as a 400 response.
+
+    Args:
+        datetime: The requested time or interval, or ``None`` when unspecified.
+
+    Raises:
+        BadRequestError: If ``datetime`` is a non-empty value.
+
+    Examples:
+        An absent or empty selector is accepted:
+
+        >>> reject_temporal_selection() is None
+        True
+        >>> reject_temporal_selection("") is None
+        True
+
+        A requested time is rejected:
+
+        >>> reject_temporal_selection("1900-01-01T00:00:00Z")
+        Traceback (most recent call last):
+            ...
+        titiler.core.errors.BadRequestError: Temporal selection is not ...
+    """
+    if datetime:
+        msg = (
+            "Temporal selection is not supported by this endpoint: the 2-D "
+            "raster has no time axis. Remove the datetime parameter."
+        )
+        raise BadRequestError(msg)
+
+
 def area_stat(
     stat: Annotated[
         str,
