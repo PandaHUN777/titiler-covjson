@@ -64,3 +64,5 @@ Keep each ADR self-contained, and do not restate conventions already in CLAUDE.m
   every array a read allocates (`max_cells` bounds `width * height * bands`);
   room for ordinary multi-band reads comes from a larger default value, never
   from narrowing what the ceiling counts
+- [ADR-0007](0007-trajectory-times-need-dated-data.md) -- A Trajectory's times
+  must be true of the data read, so `/trajectory` requires dated data
