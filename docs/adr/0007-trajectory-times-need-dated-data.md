@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 Amends [ADR-0005](0005-trajectory-temporal-multipoint-non-temporal.md) (where
 `/trajectory` gets its times).
