@@ -86,6 +86,20 @@ def test_coordinate_token_rejects_non_wkt_syntax(token: str) -> None:
     assert _COORDINATE_TOKEN.fullmatch(token) is None
 
 
+@pytest.mark.parametrize(
+    "token",
+    ["\u0131nf", "\u0130nf", "inf\u0131nity"],
+    ids=["dotless-i", "dotted-capital-i", "dotless-i-in-infinity"],
+)
+def test_coordinate_token_rejects_non_ascii_case_folds(token: str) -> None:
+    """Unicode case folding reads ``ı`` and ``İ`` as ``i``, but ``float`` does not.
+
+    A token the pattern admits and ``float`` rejects surfaces as a 500, so the
+    pattern must not fold letters beyond ASCII.
+    """
+    assert _COORDINATE_TOKEN.fullmatch(token) is None
+
+
 def test_parse_point_wkt_accepts_an_underflowing_coordinate() -> None:
     """A coordinate too small to represent is accepted, silently becoming zero.
 
@@ -223,8 +237,9 @@ def test_parse_polygon_wkt_accepts_holes() -> None:
         "POLYGON M ((0 0 1, 1 0 1, 1 1 1, 0 0 1))",
         "POLYGON ZM ((0 0 1 1, 1 0 1 1, 1 1 1 1, 0 0 1 1))",
         "POLYGON((0 0 5, 1 0 5, 1 1 5, 0 0 5))",
+        "POLYGON((0 0 5 1, 1 0 5 1, 1 1 5 1, 0 0 5 1))",
     ],
-    ids=["Z-tag", "M-tag", "ZM-tag", "3-token-vertex"],
+    ids=["Z-tag", "M-tag", "ZM-tag", "3-token-vertex", "4-token-vertex"],
 )
 def test_parse_polygon_wkt_rejects_vertical_or_measured(wkt: str) -> None:
     # A 3-D/measured polygon is rejected: the 2-D raster cannot sample a level.
@@ -245,7 +260,9 @@ def test_parse_polygon_wkt_rejects_vertical_or_measured(wkt: str) -> None:
         ("POLYGON((0 0, 1 0, 1 1, 0 0) (2 2, 3 2, 3 3, 2 2))", "malformed ring"),
         ("POLYGON((0 0, 1 0, 1 1, 0 0) ,, (2 2, 3 2, 3 3, 2 2))", "malformed ring"),
         ("POLYGON((0 0, 4 0, 4 4, 0 4, 0 0), (1 1, x 1, 2 2, 1 1))", "in ring 1,"),
-        ("POLYGON((0 0 1 0, 1 1, 0 0))", "check for a missing comma"),
+        ("POLYGON((0 0 1 0 1 1, 0 0))", "run together"),
+        ("POLYGON((0 0, 1 0, , 0 0))", "each vertex must be an 'x y' pair; got ''"),
+        ("POLYGON((0 0, 1 0, 1, 0 0))", "each vertex must be an 'x y' pair; got '1'"),
         ("POLYGON(0 0, 1 1)", "expected at least one parenthesized ring"),
         ("MULTIPOLYGON(((0 0, 1 0, 1 1, 0 0)))", "expected WKT POLYGON"),
         ("LINESTRING(0 0, 1 1)", "expected WKT POLYGON"),
@@ -272,7 +289,9 @@ def test_parse_polygon_wkt_rejects_vertical_or_measured(wkt: str) -> None:
         "missing-comma-between-rings",
         "doubled-comma-between-rings",
         "non-numeric-in-hole",
-        "missing-comma",
+        "run-on",
+        "stray-comma",
+        "one-coordinate",
         "no-ring",
         "multipolygon",
         "linestring",
@@ -322,9 +341,9 @@ def test_parse_multipoint_wkt_accepts_both_forms(
     ids=("parenthesized-first", "bare-first", "parenthesized-outer"),
 )
 def test_parse_multipoint_wkt_rejects_mixed_parenthesization(wkt: str) -> None:
-    """One spelling per multipoint: the two may not be mixed within one list.
+    """One form per multipoint: the two may not be mixed within one list.
 
-    Each spelling is accepted on its own, but a list mixing them is refused by
+    Each form is accepted on its own, but a list mixing them is refused by
     every WKT grammar and by GEOS, so accepting it here would be a leniency no
     producer needs and no other reader shares.
     """
@@ -341,8 +360,17 @@ def test_parse_multipoint_wkt_rejects_mixed_parenthesization(wkt: str) -> None:
         "MULTIPOINT M ((0 0 5))",
         "MULTIPOINT ZM ((0 0 5 1))",
         "MULTIPOINT(0 0 5, 1 1 5)",
+        "MULTIPOINT(0 0 5 1, 1 1 5 1)",
+        "MULTIPOINT((0 0 5 1))",
     ],
-    ids=("Z-tag", "M-tag", "ZM-tag", "3-token-vertex"),
+    ids=(
+        "Z-tag",
+        "M-tag",
+        "ZM-tag",
+        "3-token-vertex",
+        "4-token-vertex",
+        "4-token-vertex-parenthesized",
+    ),
 )
 def test_parse_multipoint_wkt_rejects_vertical_or_measured(wkt: str) -> None:
     parsed = parse_multipoint_wkt(wkt)
@@ -359,13 +387,17 @@ def test_parse_multipoint_wkt_rejects_vertical_or_measured(wkt: str) -> None:
         ("not-wkt", "expected WKT MULTIPOINT"),
         ("", "expected WKT MULTIPOINT"),
         ("MULTIPOINT()", "at least one position"),
+        ("MULTIPOINT(())", "each vertex must be an 'x y' pair; got ''"),
+        ("MULTIPOINT((0 0), ())", "each vertex must be an 'x y' pair; got ''"),
+        ("MULTIPOINT((), (0 0))", "each vertex must be an 'x y' pair; got ''"),
+        ("MULTIPOINT(0 0, 1)", "each vertex must be an 'x y' pair; got '1'"),
         ("MULTIPOINT((0 0), (x 1))", "each vertex coordinate must be a number"),
         ("MULTIPOINT((0 0) (1 1))", "malformed point list"),
         ("MULTIPOINT((0 0, (1 1))", "malformed point list"),
         ("MULTIPOINT((0 0)), (1 1))", "malformed point list"),
         ("MULTIPOINT(((0 0)), ((1 1)))", "malformed point list"),
         ("MULTIPOINT((0 0), (1 1)", "malformed point list"),
-        ("MULTIPOINT(0 0 1 1)", "check for a missing comma"),
+        ("MULTIPOINT(0 0 1 1 2 2)", "run together"),
         ("MULTIPOINT((0 0), (1 1),)", "malformed point list"),
         ("MULTIPOINT(,(0 0))", "malformed point list"),
         ("MULTIPOINT((0 0),,(1 1))", "malformed point list"),
@@ -376,13 +408,17 @@ def test_parse_multipoint_wkt_rejects_vertical_or_measured(wkt: str) -> None:
         "garbage",
         "blank",
         "no-points",
+        "empty-point-only",
+        "empty-point-last",
+        "empty-point-first",
+        "one-coordinate",
         "non-numeric",
         "missing-comma-parenthesized",
         "unbalanced-open-paren",
         "unbalanced-close-paren",
         "doubled-parens",
         "unclosed-point-list",
-        "missing-comma-flat",
+        "run-on-flat",
         "trailing-comma",
         "leading-comma",
         "doubled-comma",
