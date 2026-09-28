@@ -135,5 +135,5 @@ def test_reject_temporal_selection_rejects_requested_datetime() -> None:
 def test_reject_temporal_selection_accepts_absent_datetime(
     datetime: str | None,
 ) -> None:
-    # A valueless ?datetime= is empty-is-absent, like the existing selector guards.
+    # A valueless ?datetime= is empty-is-absent, like the other selector guards.
     reject_temporal_selection(datetime)

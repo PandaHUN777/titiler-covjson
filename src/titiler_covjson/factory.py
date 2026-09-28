@@ -242,8 +242,8 @@ class CovJSONFactory(BaseFactory):
             dataset_params: Annotated[DatasetParams, Depends(self.dataset_dependency)],
             image_params: Annotated[PartFeatureParams, Depends(self.image_dependency)],
             crs: Annotated[rasterio.CRS | None, Depends(CRSParams)],
-            _temporal: Annotated[None, Depends(reject_temporal_selection)],
             _vertical: Annotated[None, Depends(reject_vertical_selection)],
+            _temporal: Annotated[None, Depends(reject_temporal_selection)],
             _format: Annotated[None, Depends(validate_covjson_format)],
         ) -> CovJSONResponse:
             _validate_bbox(minx, miny, maxx, maxy)
