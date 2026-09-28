@@ -7,6 +7,12 @@ Accepted
 Amends [ADR-0004](0004-non-temporal-surface-edr-query-verbs.md) (reclassifies
 `/trajectory`).
 
+Amended by [ADR-0007](0007-trajectory-times-need-dated-data.md):
+request-supplied times cannot be true of data read from an undated file, so
+`/trajectory` requires dated data, takes per-point times only from a
+`LINESTRINGM`, and drops the datetime list. The Decision and Consequences below
+should be read with that correction.
+
 ## Context
 
 [ADR-0004](0004-non-temporal-surface-edr-query-verbs.md) defined the
